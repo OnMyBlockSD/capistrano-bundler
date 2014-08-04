@@ -22,18 +22,33 @@ namespace :bundler do
     DESC
   task :install do
     on fetch(:bundle_servers) do
-      within release_path do
-        with fetch(:bundle_env_variables, {}) do
-          options = ["install"]
-          options << "--binstubs #{fetch(:bundle_binstubs)}" if fetch(:bundle_binstubs)
-          options << "--gemfile #{fetch(:bundle_gemfile)}" if fetch(:bundle_gemfile)
-          options << "--path #{fetch(:bundle_path)}" if fetch(:bundle_path)
-          options << "--without #{fetch(:bundle_without)}" if fetch(:bundle_without)
-          options << "--jobs #{fetch(:bundle_jobs)}" if fetch(:bundle_jobs)
-          options << "#{fetch(:bundle_flags)}" if fetch(:bundle_flags)
+      conditionally_bundle = fetch :conditionally_bundle
 
-          execute :bundle, options
+      if conditionally_bundle
+        file = "Gemfile.lock"
+        info "[bundler:install] Checking for changes in #{file}"
+        diff = "diff -q #{release_path}/#{file} #{current_path}/#{file}"
+        changed = !test(diff)
+      else
+        changed = true
+      end
+
+      if changed
+        within release_path do
+          with fetch(:bundle_env_variables, {}) do
+            options = ["install"]
+            options << "--binstubs #{fetch(:bundle_binstubs)}" if fetch(:bundle_binstubs)
+            options << "--gemfile #{fetch(:bundle_gemfile)}" if fetch(:bundle_gemfile)
+            options << "--path #{fetch(:bundle_path)}" if fetch(:bundle_path)
+            options << "--without #{fetch(:bundle_without)}" if fetch(:bundle_without)
+            options << "--jobs #{fetch(:bundle_jobs)}" if fetch(:bundle_jobs)
+            options << "#{fetch(:bundle_flags)}" if fetch(:bundle_flags)
+
+            execute :bundle, options
+          end
         end
+      else
+        info "[bundler:install] Skip (nothing changed in #{file})"
       end
     end
   end
